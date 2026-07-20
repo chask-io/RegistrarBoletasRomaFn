@@ -1,0 +1,78 @@
+{
+  "schema_version": "analizar_boletas_pompeyo.receipts.v1",
+  "receipts": [
+    {
+      "receipt_id": "receipt-001",
+      "source": {
+        "file_uuid": "file-receipt-001",
+        "file_name": "bencina.jpg",
+        "mime_type": "image/jpeg",
+        "source_content_sha256": "sha256:111111",
+        "page_index": 0,
+        "page_number": 1,
+        "original_filename": "bencina.jpg"
+      },
+      "document_type": "BOLETA",
+      "proposed_amount": {
+        "numeric_value": 45000,
+        "currency": "CLP",
+        "candidate_id": "file-receipt-001:monto_total",
+        "label": "total"
+      },
+      "expense_category": {
+        "id": "roma-cat-101",
+        "name": "Combustible",
+        "status": "resolved",
+        "catalog": "roma_expense_categories",
+        "confidence": 0.97,
+        "ambiguous": false,
+        "candidates": [
+          {
+            "id": "roma-cat-101",
+            "name": "Combustible",
+            "confidence": 0.97
+          }
+        ]
+      }
+    },
+    {
+      "receipt_id": "receipt-002",
+      "source": {
+        "file_uuid": "file-receipt-002",
+        "file_name": "almuerzo.pdf",
+        "mime_type": "application/pdf",
+        "source_content_sha256": "sha256:222222",
+        "page_index": 2,
+        "page_number": 3,
+        "original_filename": "almuerzo.pdf"
+      },
+      "document_type": "BOLETA",
+      "proposed_amount": {
+        "numeric_value": 12990,
+        "currency": "CLP",
+        "candidate_id": "file-receipt-002:monto_total",
+        "label": "total"
+      },
+      "expense_category": {
+        "id": "roma-cat-202",
+        "name": "Alimentacion",
+        "status": "resolved",
+        "catalog": "roma_expense_categories",
+        "confidence": 0.58,
+        "ambiguous": true,
+        "candidates": [
+          {
+            "id": "roma-cat-202",
+            "name": "Alimentacion",
+            "confidence": 0.58
+          },
+          {
+            "id": "roma-cat-303",
+            "name": "Viajes",
+            "confidence": 0.51
+          }
+        ]
+      }
+    }
+  ]
+}

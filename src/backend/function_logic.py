@@ -71,7 +71,9 @@ class RomaAdapter(Protocol):
 class ReceiptValidation:
     receipt: Dict[str, Any]
     normalized_amount: str
-    normalized_category: str
+    category_id: str
+    category_name: str
+    category_audit: Dict[str, Any]
     idempotency_key: str
 
 
@@ -176,16 +178,18 @@ class PompeyoRomaHttpAdapter:
         raise RomaTechnicalError("ROMA_REQUEST_FAILED", str(last_error)[:300])
 
     def _build_payload(self, receipt: Dict[str, Any], idempotency_key: str) -> Dict[str, Any]:
+        category = _extract_category_metadata(receipt)
         return {
             "idempotency_key": idempotency_key,
             "receipt_id": receipt.get("receipt_id"),
-            "file_uuid": receipt.get("file_uuid"),
+            "file_uuid": receipt.get("file_uuid") or (receipt.get("source") or {}).get("file_uuid"),
             "date": receipt.get("fecha") or receipt.get("date"),
-            "amount": receipt.get("monto") or receipt.get("amount"),
+            "amount": receipt.get("roma_amount") or _extract_amount_value(receipt),
             "supplier": receipt.get("proveedor") or receipt.get("supplier"),
             "document_number": receipt.get("numero") or receipt.get("document_number"),
             "document_type": receipt.get("tipo_documento") or receipt.get("document_type"),
-            "category": receipt.get("categoria") or receipt.get("category"),
+            "category": receipt.get("roma_category_id") or category["id"],
+            "category_name": receipt.get("roma_category_name") or category["name"],
             "detail": receipt.get("detalle") or receipt.get("detail"),
         }
 
@@ -226,6 +230,110 @@ class RomaTechnicalError(Exception):
         super().__init__(message)
         self.code = code
         self.message = message
+
+
+def _extract_amount_value(receipt: Dict[str, Any]) -> Any:
+    proposed = receipt.get("proposed_amount")
+    if isinstance(proposed, dict):
+        for key in ("numeric_value", "value", "amount", "monto"):
+            value = proposed.get(key)
+            if value not in (None, ""):
+                return value
+        raise ValueError("proposed_amount must include numeric_value/value/amount")
+    if proposed not in (None, ""):
+        return proposed
+    for key in ("monto", "amount"):
+        value = receipt.get(key)
+        if value not in (None, ""):
+            return value
+    raise ValueError("Receipt amount is required")
+
+
+def _extract_category_metadata(receipt: Dict[str, Any]) -> Dict[str, Any]:
+    raw = receipt.get("expense_category")
+    if raw in (None, ""):
+        raw = receipt.get("category")
+    if raw in (None, ""):
+        raw = receipt.get("categoria")
+
+    if isinstance(raw, dict):
+        status = str(raw.get("status") or "resolved").strip().lower()
+        ambiguous = bool(raw.get("ambiguous"))
+        if status in {"unresolved", "missing", "unknown"}:
+            raise ValueError("Receipt category is unresolved")
+        category_id = raw.get("id") or raw.get("category_id") or raw.get("uuid") or raw.get("code")
+        category_name = raw.get("name") or raw.get("category_name") or raw.get("label")
+        if category_id in (None, ""):
+            raise ValueError("Receipt category ID is required")
+        if category_name in (None, ""):
+            raise ValueError("Receipt category name is required")
+        candidates = []
+        for candidate in raw.get("candidates") or []:
+            if not isinstance(candidate, dict):
+                continue
+            candidate_id = candidate.get("id") or candidate.get("category_id") or candidate.get("uuid") or candidate.get("code")
+            candidate_name = candidate.get("name") or candidate.get("category_name") or candidate.get("label")
+            if candidate_id in (None, "") or candidate_name in (None, ""):
+                continue
+            candidates.append({
+                "id": _normalize_category_token_value(candidate_id),
+                "name": _normalize_category_token_value(candidate_name),
+            })
+        top = {
+            "id": _normalize_category_token_value(category_id),
+            "name": _normalize_category_token_value(category_name),
+        }
+        if not candidates:
+            candidates = [top]
+        return {
+            "id": top["id"],
+            "name": top["name"],
+            "status": status,
+            "ambiguous": ambiguous,
+            "candidates": candidates,
+        }
+
+    if isinstance(raw, list):
+        raise ValueError("Receipt category must not be an array")
+    if raw in (None, ""):
+        raise ValueError("Receipt category is required")
+    token = _normalize_category_token_value(raw)
+    return {
+        "id": token,
+        "name": token,
+        "status": "legacy_scalar",
+        "ambiguous": False,
+        "candidates": [{"id": token, "name": token}],
+    }
+
+
+def _extract_source_digest(receipt: Dict[str, Any]) -> Any:
+    source = receipt.get("source") if isinstance(receipt.get("source"), dict) else {}
+    return (
+        source.get("source_content_sha256")
+        or source.get("digest")
+        or receipt.get("source_digest")
+        or receipt.get("file_digest")
+        or receipt.get("file_sha256")
+        or receipt.get("source_file_digest")
+        or receipt.get("sha256")
+    )
+
+
+def _extract_page_index(receipt: Dict[str, Any]) -> Any:
+    source = receipt.get("source") if isinstance(receipt.get("source"), dict) else {}
+    return receipt.get("page_index", source.get("page_index"))
+
+
+def _extract_page_number(receipt: Dict[str, Any]) -> Any:
+    source = receipt.get("source") if isinstance(receipt.get("source"), dict) else {}
+    return receipt.get("page_number", source.get("page_number"))
+
+
+def _normalize_category_token_value(value: Any) -> str:
+    if isinstance(value, (dict, list)):
+        raise ValueError("Category token must be scalar")
+    return re.sub(r"\s+", " ", str(value).strip()).upper().replace(" ", "_")
 
 
 class FunctionBackend:
@@ -323,9 +431,13 @@ class FunctionBackend:
 
     def _submit_one(self, item: ReceiptValidation, token: str) -> Dict[str, Any]:
         receipt_id = item.receipt["receipt_id"]
+        receipt_for_roma = dict(item.receipt)
+        receipt_for_roma["roma_amount"] = item.normalized_amount
+        receipt_for_roma["roma_category_id"] = item.category_id
+        receipt_for_roma["roma_category_name"] = item.category_name
         try:
             adapter_result = self.roma_adapter.submit_receipt(
-                receipt=item.receipt,
+                receipt=receipt_for_roma,
                 idempotency_key=item.idempotency_key,
                 token=token,
             )
@@ -342,7 +454,7 @@ class FunctionBackend:
                 "roma_record_id": adapter_result.get("roma_record_id"),
                 "idempotency_key": item.idempotency_key,
                 "duplicate": bool(adapter_result.get("duplicate")),
-                "payload_echo_min": self._payload_echo_min(item.receipt, item.idempotency_key),
+                "payload_echo_min": self._payload_echo_min(item),
             }
         if status == "rejected_business":
             return {
@@ -351,7 +463,7 @@ class FunctionBackend:
                 "error_code": adapter_result.get("error_code", "ROMA_BUSINESS_REJECTED"),
                 "error_message": adapter_result.get("error_message", "ROMA rejected the receipt"),
                 "idempotency_key": item.idempotency_key,
-                "payload_echo_min": self._payload_echo_min(item.receipt, item.idempotency_key),
+                "payload_echo_min": self._payload_echo_min(item),
             }
         return self._technical_failure(
             receipt_id,
@@ -408,15 +520,21 @@ class FunctionBackend:
                 continue
 
             try:
-                normalized_amount = self._normalize_amount(receipt.get("monto") or receipt.get("amount"))
+                category = _extract_category_metadata(receipt)
+                normalized_amount = self._normalize_amount(_extract_amount_value(receipt))
                 confirmed_amount = self._normalize_amount(
                     confirmation_item.get("confirmed_amount")
                     or confirmation_item.get("monto_confirmado")
                     or confirmation_item.get("amount")
                 )
-                normalized_category = self._normalize_category(receipt.get("categoria") or receipt.get("category"))
-                confirmed_category = self._normalize_category(
+                confirmed_category_id = self._normalize_category_id(
+                    confirmation_item.get("category_id")
+                    or confirmation_item.get("confirmed_category_id")
+                    or confirmation_item.get("categoria_id")
+                )
+                confirmed_category_name = self._normalize_category_name(
                     confirmation_item.get("confirmed_category")
+                    or confirmation_item.get("category_name")
                     or confirmation_item.get("categoria_confirmada")
                     or confirmation_item.get("category")
                 )
@@ -433,16 +551,17 @@ class FunctionBackend:
                     )
                 )
                 continue
-            if normalized_category != confirmed_category:
+            if not self._confirmed_category_in_catalog(category, confirmed_category_id, confirmed_category_name):
                 validated.append(
                     self._business_reject(
                         receipt_id,
                         "CONFIRMED_CATEGORY_MISMATCH",
-                        "Ready receipt category does not match confirmed category",
+                        "Confirmed category is not present in analyzer catalog candidates",
                     )
                 )
                 continue
-            if not self._category_allowed(normalized_category, allowed_categories):
+            confirmed_category = {"id": confirmed_category_id, "name": confirmed_category_name}
+            if not self._category_allowed(confirmed_category, allowed_categories):
                 validated.append(
                     self._business_reject(
                         receipt_id,
@@ -453,7 +572,7 @@ class FunctionBackend:
                 continue
 
             try:
-                idempotency_key = self._idempotency_key(receipt, normalized_amount, normalized_category)
+                idempotency_key = self._idempotency_key(receipt, normalized_amount, confirmed_category)
             except ValueError as exc:
                 validated.append(self._business_reject(receipt_id, "IDEMPOTENCY_INPUT_INVALID", str(exc)))
                 continue
@@ -462,29 +581,33 @@ class FunctionBackend:
                 ReceiptValidation(
                     receipt=receipt,
                     normalized_amount=normalized_amount,
-                    normalized_category=normalized_category,
+                    category_id=confirmed_category_id,
+                    category_name=confirmed_category_name,
+                    category_audit={
+                        "analyzer_category_id": category["id"],
+                        "analyzer_category_name": category["name"],
+                        "analyzer_category_ambiguous": category["ambiguous"],
+                        "analyzer_category_status": category["status"],
+                    },
                     idempotency_key=idempotency_key,
                 )
             )
 
         return validated
 
-    def _idempotency_key(self, receipt: Dict[str, Any], amount: str, category: str) -> str:
-        digest = (
-            receipt.get("file_digest")
-            or receipt.get("file_sha256")
-            or receipt.get("source_file_digest")
-            or receipt.get("sha256")
-        )
+    def _idempotency_key(self, receipt: Dict[str, Any], amount: str, category: Dict[str, str]) -> str:
+        digest = _extract_source_digest(receipt)
         if not digest:
             raise ValueError("Receipt must include immutable file digest for idempotency")
         basis = {
             "schema": "registrar_boletas_roma.idempotency.v1",
             "receipt_id": str(receipt.get("receipt_id") or ""),
             "file_digest": str(digest).lower(),
-            "page_index": receipt.get("page_index"),
+            "page_index": _extract_page_index(receipt),
+            "page_number": _extract_page_number(receipt),
             "amount": amount,
-            "category": category,
+            "category_id": category["id"],
+            "category_name": category["name"],
             "date": str(receipt.get("fecha") or receipt.get("date") or ""),
             "supplier": self._normalize_text(receipt.get("proveedor") or receipt.get("supplier") or ""),
             "document_number": self._normalize_text(receipt.get("numero") or receipt.get("document_number") or ""),
@@ -573,16 +696,19 @@ class FunctionBackend:
             "idempotency_key": item.idempotency_key,
             "no_write": True,
             "no_write_reason": reason,
-            "payload_echo_min": self._payload_echo_min(item.receipt, item.idempotency_key),
+            "payload_echo_min": self._payload_echo_min(item),
+            "category_audit": item.category_audit,
         }
 
-    def _payload_echo_min(self, receipt: Dict[str, Any], idempotency_key: str) -> Dict[str, Any]:
+    def _payload_echo_min(self, item: ReceiptValidation) -> Dict[str, Any]:
+        receipt = item.receipt
         return {
             "receipt_id": receipt.get("receipt_id"),
-            "file_uuid": receipt.get("file_uuid"),
-            "amount": receipt.get("monto") or receipt.get("amount"),
-            "category": receipt.get("categoria") or receipt.get("category"),
-            "idempotency_key": idempotency_key,
+            "file_uuid": receipt.get("file_uuid") or (receipt.get("source") or {}).get("file_uuid"),
+            "amount": item.normalized_amount,
+            "category_id": item.category_id,
+            "category_name": item.category_name,
+            "idempotency_key": item.idempotency_key,
         }
 
     def _business_reject(self, receipt_id: Any, code: str, message: str) -> Dict[str, Any]:
@@ -621,12 +747,36 @@ class FunctionBackend:
         raw = confirmation.get("allowed_categories")
         if raw is None:
             return None
-        return {self._normalize_category(item) for item in raw}
+        return {self._normalize_category_token(item) for item in raw}
 
-    def _category_allowed(self, category: str, allowed_categories: Optional[set[str]]) -> bool:
-        if not CATEGORY_RE.match(category):
+    def _category_allowed(self, category: Dict[str, str], allowed_categories: Optional[set[str]]) -> bool:
+        if not CATEGORY_RE.match(category["id"]):
             return False
-        return allowed_categories is None or category in allowed_categories
+        return (
+            allowed_categories is None
+            or category["id"] in allowed_categories
+            or category["name"] in allowed_categories
+        )
+
+    def _confirmed_category_in_catalog(
+        self,
+        analyzer_category: Dict[str, Any],
+        confirmed_category_id: str,
+        confirmed_category_name: str,
+    ) -> bool:
+        candidates = analyzer_category.get("candidates") or []
+        if candidates:
+            for candidate in candidates:
+                if (
+                    candidate.get("id") == confirmed_category_id
+                    and candidate.get("name") == confirmed_category_name
+                ):
+                    return True
+            return False
+        return (
+            analyzer_category["id"] == confirmed_category_id
+            and analyzer_category["name"] == confirmed_category_name
+        )
 
     def _normalize_amount(self, value: Any) -> str:
         if value in (None, ""):
@@ -641,9 +791,23 @@ class FunctionBackend:
         except InvalidOperation as exc:
             raise ValueError(f"Invalid amount: {value!r}") from exc
 
-    def _normalize_category(self, value: Any) -> str:
+    def _normalize_category_id(self, value: Any) -> str:
         if value in (None, ""):
-            raise ValueError("Confirmed category is required")
+            raise ValueError("Confirmed category ID is required")
+        if isinstance(value, (dict, list)):
+            raise ValueError("Confirmed category ID must be scalar")
+        return self._normalize_category_token(value)
+
+    def _normalize_category_name(self, value: Any) -> str:
+        if value in (None, ""):
+            raise ValueError("Confirmed category name is required")
+        if isinstance(value, (dict, list)):
+            raise ValueError("Confirmed category name must be scalar")
+        return self._normalize_category_token(value)
+
+    def _normalize_category_token(self, value: Any) -> str:
+        if isinstance(value, (dict, list)):
+            raise ValueError("Category token must be scalar")
         return self._normalize_text(value).upper().replace(" ", "_")
 
     def _normalize_text(self, value: Any) -> str:

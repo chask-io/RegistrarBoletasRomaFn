@@ -30,6 +30,40 @@ Each ready receipt must include:
 }
 ```
 
+The corrected analyzer contract may instead provide:
+
+```json
+{
+  "receipt_id": "receipt-001",
+  "source": {
+    "file_uuid": "file-receipt-001",
+    "source_content_sha256": "sha256:...",
+    "page_index": 0,
+    "page_number": 1
+  },
+  "proposed_amount": {
+    "numeric_value": 45000,
+    "currency": "CLP"
+  },
+  "expense_category": {
+    "id": "roma-cat-101",
+    "name": "Combustible",
+    "status": "resolved",
+    "ambiguous": true,
+    "candidates": [
+      {"id": "roma-cat-101", "name": "Combustible"},
+      {"id": "roma-cat-303", "name": "Viajes"}
+    ]
+  }
+}
+```
+
+`proposed_amount.numeric_value`, `expense_category.id/name`, and
+`source.source_content_sha256` are first-class inputs. Nested category objects
+must never be stringified. If the analyzer category is ambiguous, the writer
+accepts it only when the persisted confirmation pins one of the analyzer
+catalog candidates.
+
 The confirmation artifact must include:
 
 ```json
@@ -42,11 +76,19 @@ The confirmation artifact must include:
     {
       "receipt_id": "r-001",
       "confirmed_amount": 12990,
-      "confirmed_category": "COMBUSTIBLE"
+      "confirmed_category": "COMBUSTIBLE",
+      "confirmed_category_id": "COMBUSTIBLE"
     }
   ]
 }
 ```
+
+`confirmed_category_id` from the persisted confirmation is the authoritative
+ROMA mapping. `category_id` remains accepted as a backwards-compatible alias.
+`confirmed_category`/`category_name` is retained for audit and must match the
+selected analyzer candidate name. Reject if the category is unresolved/missing,
+the confirmation lacks a category ID, or the confirmed ID/name is absent from
+the analyzer candidates.
 
 ## Write Modes
 
@@ -63,8 +105,9 @@ The idempotency key is SHA-256 over:
 
 - immutable file digest,
 - `page_index`,
+- `page_number`,
 - normalized amount,
-- normalized category,
+- confirmed category ID and name,
 - date,
 - supplier,
 - document number,

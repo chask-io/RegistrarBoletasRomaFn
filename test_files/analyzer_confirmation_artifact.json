@@ -1,0 +1,63 @@
+{
+  "schema_version": "1",
+  "approved": true,
+  "ready_receipts_uuid": "ready-receipts-fixture",
+  "batch_hash": "batch-hash-v1",
+  "batch_version": "1",
+  "allowed_categories": ["roma-cat-101", "roma-cat-202", "roma-cat-303"],
+  "confirmed_receipts": [
+    {
+      "receipt_id": "receipt-001",
+      "file_uuid": "file-receipt-001",
+      "original_filename": "bencina.jpg",
+      "page_index": 0,
+      "page_number": 1,
+      "source_digest": "sha256:111111",
+      "source": {
+        "digest": "sha256:111111",
+        "page_index": 0,
+        "page_number": 1,
+        "mime_type": "image/jpeg",
+        "original_filename": "bencina.jpg"
+      },
+      "confirmed_amount": 45000,
+      "confirmed_category": "Combustible",
+      "confirmed_category_id": "roma-cat-101",
+      "category_name": "Combustible",
+      "category_confidence": 0.97,
+      "category_ambiguous": false,
+      "category_candidates": []
+    },
+    {
+      "receipt_id": "receipt-002",
+      "file_uuid": "file-receipt-002",
+      "original_filename": "almuerzo.pdf",
+      "page_index": 2,
+      "page_number": 3,
+      "source_digest": "sha256:222222",
+      "source": {
+        "digest": "sha256:222222",
+        "page_index": 2,
+        "page_number": 3,
+        "mime_type": "application/pdf",
+        "original_filename": "almuerzo.pdf"
+      },
+      "confirmed_amount": 12990,
+      "confirmed_category": "Alimentacion",
+      "confirmed_category_id": "roma-cat-202",
+      "category_name": "Alimentacion",
+      "category_confidence": 0.58,
+      "category_ambiguous": true,
+      "category_candidates": [
+        {
+          "id": "roma-cat-202",
+          "name": "Alimentacion"
+        },
+        {
+          "id": "roma-cat-303",
+          "name": "Viajes"
+        }
+      ]
+    }
+  ]
+}

@@ -80,6 +80,7 @@ def confirmation(amount=12990, category="COMBUSTIBLE", batch_hash="batch-hash-v1
                 "receipt_id": "r1",
                 "confirmed_amount": amount,
                 "confirmed_category": category,
+                "category_id": category,
             }
         ],
     }
@@ -346,8 +347,8 @@ def test_partial_failures(monkeypatch):
         "confirmation": {
             **confirmation(),
             "confirmed_receipts": [
-                {"receipt_id": "r1", "confirmed_amount": 12990, "confirmed_category": "COMBUSTIBLE"},
-                {"receipt_id": "r2", "confirmed_amount": 9999, "confirmed_category": "PEAJE"},
+                {"receipt_id": "r1", "confirmed_amount": 12990, "confirmed_category": "COMBUSTIBLE", "category_id": "COMBUSTIBLE"},
+                {"receipt_id": "r2", "confirmed_amount": 9999, "confirmed_category": "PEAJE", "category_id": "PEAJE"},
             ],
         },
     }
@@ -371,6 +372,133 @@ def test_category_validation(monkeypatch):
 
     assert summary["rejected_business_count"] == 1
     assert output["results"][0]["error_code"] == "INVALID_CATEGORY"
+    assert adapter.calls == []
+
+
+def test_ambiguous_analyzer_category_succeeds_when_confirmation_pins_candidate(monkeypatch):
+    receipt = {
+        "receipt_id": "receipt-ambiguous",
+        "file_uuid": "file-ambiguous",
+        "source": {
+            "file_uuid": "file-ambiguous",
+            "source_content_sha256": "sha256:ambiguous",
+            "page_index": 0,
+            "page_number": 1,
+        },
+        "proposed_amount": {"numeric_value": 45000, "currency": "CLP"},
+        "expense_category": {
+            "id": "roma-cat-101",
+            "name": "Combustible",
+            "status": "resolved",
+            "ambiguous": True,
+            "candidates": [
+                {"id": "roma-cat-101", "name": "Combustible", "confidence": 0.61},
+                {"id": "roma-cat-303", "name": "Viajes", "confidence": 0.55},
+            ],
+        },
+    }
+    artifact = {
+        **confirmation(),
+        "confirmed_receipts": [
+            {
+                "receipt_id": "receipt-ambiguous",
+                "confirmed_amount": 45000,
+                "confirmed_category": "Combustible",
+                "category_id": "roma-cat-101",
+            }
+        ],
+        "allowed_categories": ["roma-cat-101", "roma-cat-303"],
+    }
+
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        {"ready": {"ready_receipts": [receipt]}, "confirmation": artifact},
+        mode="shadow",
+    )
+
+    assert summary["accepted_count"] == 1
+    assert output["results"][0]["no_write_reason"] == "shadow_no_write"
+    assert output["results"][0]["payload_echo_min"]["category_id"] == "ROMA-CAT-101"
+    assert output["results"][0]["category_audit"]["analyzer_category_ambiguous"] is True
+    assert adapter.calls == []
+
+
+def test_unresolved_or_missing_category_id_rejects(monkeypatch):
+    receipt = {
+        **ready(),
+        "expense_category": {
+            "name": "Combustible",
+            "status": "unresolved",
+            "ambiguous": False,
+            "candidates": [{"id": "roma-cat-101", "name": "Combustible"}],
+        },
+    }
+
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        {"ready": {"ready_receipts": [receipt]}, "confirmation": confirmation(category="Combustible")},
+    )
+
+    assert summary["rejected_business_count"] == 1
+    assert output["results"][0]["error_code"] == "INVALID_CONFIRMED_FIELDS"
+    assert "unresolved" in output["results"][0]["error_message"]
+    assert adapter.calls == []
+
+
+def test_confirmed_choice_absent_from_analyzer_candidates_rejects(monkeypatch):
+    receipt = {
+        **ready(),
+        "expense_category": {
+            "id": "roma-cat-101",
+            "name": "Combustible",
+            "status": "resolved",
+            "ambiguous": True,
+            "candidates": [{"id": "roma-cat-101", "name": "Combustible"}],
+        },
+    }
+    artifact = {
+        **confirmation(category="Viajes"),
+        "confirmed_receipts": [
+            {
+                "receipt_id": "r1",
+                "confirmed_amount": 12990,
+                "confirmed_category": "Viajes",
+                "category_id": "roma-cat-303",
+            }
+        ],
+        "allowed_categories": ["roma-cat-101", "roma-cat-303"],
+    }
+
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        {"ready": {"ready_receipts": [receipt]}, "confirmation": artifact},
+    )
+
+    assert summary["rejected_business_count"] == 1
+    assert output["results"][0]["error_code"] == "CONFIRMED_CATEGORY_MISMATCH"
+    assert adapter.calls == []
+
+
+def test_analyzer_output_fixture_validates_and_uses_source_digest_for_idempotency(monkeypatch):
+    fixture_dir = Path(__file__).resolve().parents[1] / "test_files"
+    ready_payload = json.loads((fixture_dir / "analyzer_ready_receipts_output.json").read_text())
+    confirmation_payload = json.loads((fixture_dir / "analyzer_confirmation_artifact.json").read_text())
+
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        {"ready": ready_payload, "confirmation": confirmation_payload},
+        mode="shadow",
+    )
+
+    assert summary["accepted_count"] == 2
+    first, second = output["results"]
+    assert first["payload_echo_min"]["amount"] == "45000"
+    assert first["payload_echo_min"]["category_id"] == "ROMA-CAT-101"
+    assert first["category_audit"]["analyzer_category_ambiguous"] is False
+    assert second["payload_echo_min"]["amount"] == "12990"
+    assert second["payload_echo_min"]["category_id"] == "ROMA-CAT-202"
+    assert second["category_audit"]["analyzer_category_ambiguous"] is True
+    assert first["idempotency_key"] != second["idempotency_key"]
     assert adapter.calls == []
 
 
