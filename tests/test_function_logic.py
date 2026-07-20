@@ -161,6 +161,14 @@ def test_publish_suite_fixtures_live_under_tests_with_no_write_contract():
         "test_files/analyzer_ready_receipts_output.json",
         "test_files/analyzer_confirmation_artifact.json",
     ]
+    server_owned_extra_keys = {
+        "source",
+        "is_test",
+        "is_node_test",
+        "is_operator_params_test",
+        "test_execution_uuid",
+        "explicit_lambda_override",
+    }
 
     for filename in suite_files:
         root_fixture = root / filename
@@ -177,12 +185,10 @@ def test_publish_suite_fixtures_live_under_tests_with_no_write_contract():
         assert "confirmation_artifact_uuid" not in payload["args"]
         assert "confirmation_uuid" not in payload["args"]
 
-        extra = payload["extra_params"]
-        assert extra["source"] == "test_cli"
-        assert extra["is_test"] is True
-        assert extra["is_node_test"] is True
-        assert extra["test_execution_uuid"]
-        assert extra["explicit_lambda_override"] == "RegistrarBoletasRomaFn"
+        # The server owns these correlation markers. Fixture-provided values
+        # would override real IDs when chask_api merges custom extra_params.
+        extra = payload.get("extra_params", {})
+        assert not (server_owned_extra_keys & set(extra))
         assert "live" not in (payload.get("prompt") or "").lower()
 
 

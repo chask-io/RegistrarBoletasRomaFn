@@ -12,14 +12,7 @@
     "test_files/analyzer_ready_receipts_output.json",
     "test_files/analyzer_confirmation_artifact.json"
   ],
-  "extra_params": {
-    "source": "test_cli",
-    "is_test": true,
-    "is_node_test": true,
-    "is_operator_params_test": true,
-    "test_execution_uuid": "00000000-0000-4000-8000-000000000002",
-    "explicit_lambda_override": "RegistrarBoletasRomaFn"
-  },
+  "extra_params": {},
   "metadata": {
     "description": "Operator params fixture includes every required argument literally in prompt."
   }
