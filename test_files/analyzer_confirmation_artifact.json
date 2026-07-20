@@ -1,7 +1,6 @@
 {
   "schema_version": "1",
   "approved": true,
-  "ready_receipts_uuid": "ready-receipts-fixture",
   "batch_hash": "batch-hash-v1",
   "batch_version": "1",
   "allowed_categories": ["10", "20", "30"],

@@ -14,7 +14,7 @@ class Org:
 
 
 class Event:
-    def __init__(self, args=None, extra=None):
+    def __init__(self, args=None, extra=None, source="agent"):
         self.extra_params = {
             "tool_calls": [{"args": args or {}}],
             **(extra or {}),
@@ -24,6 +24,7 @@ class Event:
         self.orchestration_session_uuid = "session"
         self.internal_orchestration_session_uuid = "internal"
         self.event_id = "event"
+        self.source = source
 
 
 class MemoryFileStore:
@@ -96,12 +97,50 @@ def args():
     }
 
 
-def run_backend(monkeypatch, files, mode="disabled", adapter=None, extra=None, call_args=None):
+def suite_args():
+    return {
+        "node_id": "265926",
+        "file_uuids": ["uploaded-ready", "uploaded-confirmation"],
+        "batch_hash": "batch-hash-v1",
+        "batch_version": "1",
+    }
+
+
+def suite_extra(attachments=None):
+    return {
+        "is_test": True,
+        "is_node_test": True,
+        "test_execution_uuid": "suite-exec-uuid",
+        "explicit_lambda_override": "RegistrarBoletasRomaFn",
+        "attachments": attachments
+        if attachments is not None
+        else [
+            {
+                "file_uuid": "uploaded-ready",
+                "file_name": "analyzer_ready_receipts_output.json",
+            },
+            {
+                "file_uuid": "uploaded-confirmation",
+                "source": "test_files/analyzer_confirmation_artifact.json",
+            },
+        ],
+    }
+
+
+def analyzer_fixtures():
+    fixture_dir = Path(__file__).resolve().parents[1] / "test_files"
+    return {
+        "uploaded-ready": json.loads((fixture_dir / "analyzer_ready_receipts_output.json").read_text()),
+        "uploaded-confirmation": json.loads((fixture_dir / "analyzer_confirmation_artifact.json").read_text()),
+    }
+
+
+def run_backend(monkeypatch, files, mode="disabled", adapter=None, extra=None, call_args=None, source="agent"):
     monkeypatch.setenv("POMPEYO_ROMA_WRITE_MODE", mode)
     monkeypatch.setenv("POMPEYO_ROMA_BASE_URL", "https://apps1.pompeyo.cl")
     store = MemoryFileStore(files)
     backend = logic.FunctionBackend(
-        Event(call_args or args(), extra=extra),
+        Event(call_args or args(), extra=extra, source=source),
         file_store=store,
         roma_adapter=adapter or RecordingAdapter(),
     )
@@ -158,6 +197,114 @@ def test_confirmation_artifact_contract_fixture(monkeypatch):
     assert summary["accepted_count"] == 1
     assert output["results"][0]["receipt_id"] == "receipt-001"
     assert output["results"][0]["status"] == "accepted"
+    assert adapter.calls == []
+
+
+def test_strict_suite_uploads_resolve_ready_and_confirmation_uuids(monkeypatch):
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        analyzer_fixtures(),
+        call_args=suite_args(),
+        extra=suite_extra(),
+        source="test_cli",
+    )
+
+    assert summary["accepted_count"] == 2
+    assert output["mode"] == "test"
+    assert {item["receipt_id"] for item in output["results"]} == {
+        "receipt_111111111111111111111111",
+        "receipt_222222222222222222222222",
+    }
+    assert adapter.calls == []
+
+
+def test_normal_orchestrator_event_cannot_fallback_to_uploaded_files(monkeypatch):
+    extra = suite_extra()
+    extra["is_test"] = False
+
+    with pytest.raises(ValueError, match="ready_receipts_uuid"):
+        run_backend(
+            monkeypatch,
+            analyzer_fixtures(),
+            call_args=suite_args(),
+            extra=extra,
+            source="orchestrator",
+        )
+
+
+def test_suite_upload_uuid_mismatch_is_rejected(monkeypatch):
+    bad_args = suite_args()
+    bad_args["file_uuids"] = ["uploaded-ready", "different-confirmation"]
+
+    with pytest.raises(ValueError, match="ready_receipts_uuid"):
+        run_backend(
+            monkeypatch,
+            analyzer_fixtures(),
+            call_args=bad_args,
+            extra=suite_extra(),
+            source="test_cli",
+        )
+
+
+def test_suite_upload_duplicate_fixture_names_are_rejected(monkeypatch):
+    duplicate_ready = [
+        {
+            "file_uuid": "uploaded-ready",
+            "file_name": "analyzer_ready_receipts_output.json",
+        },
+        {
+            "file_uuid": "uploaded-confirmation",
+            "source": "test_files/analyzer_ready_receipts_output.json",
+        },
+    ]
+
+    with pytest.raises(ValueError, match="ready_receipts_uuid"):
+        run_backend(
+            monkeypatch,
+            analyzer_fixtures(),
+            call_args=suite_args(),
+            extra=suite_extra(duplicate_ready),
+            source="test_cli",
+        )
+
+
+def test_explicit_args_win_over_suite_upload_mapping(monkeypatch):
+    explicit_args = {
+        **args(),
+        "file_uuids": ["uploaded-ready", "uploaded-confirmation"],
+    }
+
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        {
+            **analyzer_fixtures(),
+            "ready": {"ready_receipts": [ready()]},
+            "confirmation": confirmation(),
+        },
+        call_args=explicit_args,
+        extra=suite_extra(),
+        source="test_cli",
+    )
+
+    assert summary["accepted_count"] == 1
+    assert output["results"][0]["receipt_id"] == "r1"
+    assert adapter.calls == []
+
+
+def test_suite_event_forces_no_write_even_if_live(monkeypatch):
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        analyzer_fixtures(),
+        mode="live",
+        call_args=suite_args(),
+        extra=suite_extra(),
+        source="orchestrator",
+    )
+
+    assert summary["accepted_count"] == 2
+    assert output["mode"] == "test"
+    assert output["wrote_to_roma"] is False
+    assert {item["no_write_reason"] for item in output["results"]} == {"test_no_write"}
     assert adapter.calls == []
 
 

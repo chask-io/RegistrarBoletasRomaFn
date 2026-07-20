@@ -3,8 +3,6 @@
   "test_type": "provided_params",
   "args": {
     "node_id": "265926",
-    "ready_receipts_uuid": "test-ready-receipts",
-    "confirmation_artifact_uuid": "test-confirmation",
     "batch_hash": "batch-hash-v1",
     "batch_version": "1"
   },
@@ -12,9 +10,16 @@
   "prompt": "Valida RegistrarBoletasRomaFn en modo test sin escribir en ROMA.",
   "event_type": "function_call",
   "extra_params": {
-    "is_test": true
+    "source": "test_cli",
+    "is_test": true,
+    "is_node_test": true,
+    "test_execution_uuid": "00000000-0000-4000-8000-000000000003",
+    "explicit_lambda_override": "RegistrarBoletasRomaFn"
   },
-  "files": [],
+  "files": [
+    "test_files/analyzer_ready_receipts_output.json",
+    "test_files/analyzer_confirmation_artifact.json"
+  ],
   "metadata": {
     "description": "Basic contract fixture for RegistrarBoletasRomaFn",
     "expected_status": "success"

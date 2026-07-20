@@ -3,16 +3,21 @@
   "test_type": "file_handling",
   "args": {
     "node_id": "265926",
-    "ready_receipts_uuid": "test-ready-receipts",
-    "confirmation_artifact_uuid": "test-confirmation",
     "batch_hash": "batch-hash-v1",
     "batch_version": "1"
   },
   "widget_params": {},
   "prompt": "Ejecuta validacion de archivos de boletas Roma en test mode, sin escritura externa.",
-  "files": [],
+  "files": [
+    "test_files/analyzer_ready_receipts_output.json",
+    "test_files/analyzer_confirmation_artifact.json"
+  ],
   "extra_params": {
-    "is_test": true
+    "source": "test_cli",
+    "is_test": true,
+    "is_node_test": true,
+    "test_execution_uuid": "00000000-0000-4000-8000-000000000004",
+    "explicit_lambda_override": "RegistrarBoletasRomaFn"
   },
   "metadata": {
     "description": "File handling fixture documents that inputs and outputs are session JSON files."
