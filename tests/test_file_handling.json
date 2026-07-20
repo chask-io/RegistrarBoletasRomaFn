@@ -12,13 +12,7 @@
     "test_files/analyzer_ready_receipts_output.json",
     "test_files/analyzer_confirmation_artifact.json"
   ],
-  "extra_params": {
-    "source": "test_cli",
-    "is_test": true,
-    "is_node_test": true,
-    "test_execution_uuid": "00000000-0000-4000-8000-000000000004",
-    "explicit_lambda_override": "RegistrarBoletasRomaFn"
-  },
+  "extra_params": {},
   "metadata": {
     "description": "File handling fixture documents that inputs and outputs are session JSON files."
   }
