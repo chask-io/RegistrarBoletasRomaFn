@@ -1,0 +1,22 @@
+{
+  "function_name": "RegistrarBoletasRomaFn",
+  "test_type": "provided_params",
+  "args": {
+    "node_id": "265926",
+    "ready_receipts_uuid": "test-ready-receipts",
+    "confirmation_uuid": "test-confirmation",
+    "batch_hash": "batch-hash-v1",
+    "batch_version": "1"
+  },
+  "widget_params": {},
+  "prompt": "Valida RegistrarBoletasRomaFn en modo test sin escribir en ROMA.",
+  "event_type": "function_call",
+  "extra_params": {
+    "is_test": true
+  },
+  "files": [],
+  "metadata": {
+    "description": "Basic contract fixture for RegistrarBoletasRomaFn",
+    "expected_status": "success"
+  }
+}

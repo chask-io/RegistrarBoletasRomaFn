@@ -1,0 +1,52 @@
+function:
+  name: RegistrarBoletasRomaFn
+  runtime: python3.12
+  handler: handler.lambda_handler
+  description: |
+    Registra boletas confirmadas en ROMA para Pompeyo solo cuando existe un
+    artefacto persistido de confirmacion que coincide exactamente con el hash y
+    version del batch. Devuelve resultado por boleta: accepted,
+    rejected_business o failed_technical.
+  timeout: 120
+  memory_size: 512
+
+  environment:
+    POMPEYO_ROMA_BASE_URL: "https://apps2.pompeyo.cl"
+    POMPEYO_ROMA_WRITE_MODE: "disabled"
+
+  layers:
+    - foundationMinimal
+    - foundationApi
+
+  parameters:
+    required:
+      - name: node_id
+        type: string
+        description: ID del nodo para resolver el secreto ROMA_USER_TOKEN del widget.
+      - name: ready_receipts_uuid
+        type: string
+        description: UUID del JSON persistido con boletas listas para registrar.
+      - name: confirmation_uuid
+        type: string
+        description: UUID del artefacto persistido de confirmacion humana.
+      - name: batch_hash
+        type: string
+        description: Hash exacto del batch que debe coincidir con la confirmacion.
+      - name: batch_version
+        type: string
+        description: Version exacta del contrato del batch que debe coincidir con la confirmacion.
+
+    optional: []
+
+  widget:
+    enabled: true
+    type: dynamic_widget
+    params:
+      - name: ROMA_USER_TOKEN
+        type: secret
+        required: true
+        description: Token bearer de ROMA. Se resuelve en runtime y nunca se registra ni retorna.
+
+  testing:
+    handles_files: true
+    produces_files: true

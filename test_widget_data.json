@@ -1,0 +1,22 @@
+{
+  "function_name": "RegistrarBoletasRomaFn",
+  "test_type": "widget_data",
+  "args": {
+    "node_id": "265926",
+    "ready_receipts_uuid": "test-ready-receipts",
+    "confirmation_uuid": "test-confirmation",
+    "batch_hash": "batch-hash-v1",
+    "batch_version": "1"
+  },
+  "widget_params": {
+    "ROMA_USER_TOKEN": "test-token-not-used-in-test-mode"
+  },
+  "prompt": "Valida resolucion de widget en modo test. El token no debe escribirse ni retornarse.",
+  "files": [],
+  "extra_params": {
+    "is_test": true
+  },
+  "metadata": {
+    "description": "Widget fixture for ROMA_USER_TOKEN; test mode prevents external write."
+  }
+}
