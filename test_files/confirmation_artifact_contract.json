@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "batch_hash": "batch-hash-v1",
+  "batch_version": "1",
+  "allowed_categories": ["COMBUSTIBLE", "PEAJE"],
+  "confirmed_receipts": [
+    {
+      "receipt_id": "receipt-001",
+      "confirmed_amount": 12990,
+      "confirmed_category": "COMBUSTIBLE",
+      "category_id": "COMBUSTIBLE"
+    }
+  ]
+}

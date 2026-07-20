@@ -6,7 +6,7 @@ Writer seguro para registrar boletas confirmadas en ROMA dentro del pipeline
 La funcion valida dos archivos persistidos en la sesion:
 
 - `ready_receipts_uuid`: boletas listas, con monto/categoria/digest estable.
-- `confirmation_uuid`: confirmacion humana persistida, con el mismo
+- `confirmation_artifact_uuid`: confirmacion humana persistida, con el mismo
   `batch_hash` y `batch_version`.
 
 No escribe en ROMA si falta la confirmacion, si el hash/version no coincide, si

@@ -1,0 +1,16 @@
+{
+  "schema_version": "ready_receipts.v1",
+  "ready_receipts": [
+    {
+      "receipt_id": "receipt-001",
+      "file_uuid": "file-receipt-001",
+      "file_digest": "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
+      "page_index": 0,
+      "fecha": "2026-07-20",
+      "monto": 12990,
+      "categoria": "COMBUSTIBLE",
+      "proveedor": "Copec",
+      "numero": "B123"
+    }
+  ]
+}

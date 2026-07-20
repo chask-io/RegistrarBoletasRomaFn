@@ -11,7 +11,7 @@ function:
   memory_size: 512
 
   environment:
-    POMPEYO_ROMA_BASE_URL: "https://apps2.pompeyo.cl"
+    POMPEYO_ROMA_BASE_URL: "https://apps1.pompeyo.cl"
     POMPEYO_ROMA_WRITE_MODE: "disabled"
 
   layers:
@@ -26,7 +26,7 @@ function:
       - name: ready_receipts_uuid
         type: string
         description: UUID del JSON persistido con boletas listas para registrar.
-      - name: confirmation_uuid
+      - name: confirmation_artifact_uuid
         type: string
         description: UUID del artefacto persistido de confirmacion humana.
       - name: batch_hash

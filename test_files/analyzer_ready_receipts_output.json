@@ -1,0 +1,247 @@
+{
+  "schema_version": "pompeyo.receipt_batch.v1",
+  "confidence_scale": {
+    "min": 0.0,
+    "max": 1.0,
+    "normalization": "LLM confidences in 0..100 are divided by 100; invalid or missing confidence is 0."
+  },
+  "policy": {
+    "roma_writes": false,
+    "approval_decisions": false,
+    "secrets_redacted": true
+  },
+  "batch": {
+    "orchestration_session_uuid": "session-uuid",
+    "internal_orchestration_session_uuid": "internal-session-uuid",
+    "event_id": "event-uuid",
+    "missing_attachments": false,
+    "processed_count": 1,
+    "skipped_count": 0
+  },
+  "attachment_inventory": [
+    {
+      "file_uuid": "file-1",
+      "file_name": "multi.pdf",
+      "mime_type": "application/pdf",
+      "kind": "pdf",
+      "status": "processed",
+      "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf",
+      "source_content_hash_algorithm": "sha256(source_bytes)",
+      "source_metadata_sha256": "2c7b4e7c921f19c4f3d3f93fd10a5fcbd227bfae31d44d1ca9e3c8e5a96b0b58",
+      "source_metadata_hash_algorithm": "sha256(file_uuid|file_name|mime_type|size)",
+      "page_metadata": {
+        "known_total_pages": 2,
+        "processed_pages": 2,
+        "page_index": null,
+        "page_range": null
+      }
+    }
+  ],
+  "receipts": [
+    {
+      "receipt_id": "receipt_111111111111111111111111",
+      "source": {
+        "file_uuid": "file-1",
+        "file_name": "multi.pdf",
+        "mime_type": "application/pdf",
+        "kind": "pdf",
+        "status": "processed",
+        "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf",
+        "source_content_hash_algorithm": "sha256(source_bytes)",
+        "source_metadata_sha256": "2c7b4e7c921f19c4f3d3f93fd10a5fcbd227bfae31d44d1ca9e3c8e5a96b0b58",
+        "source_metadata_hash_algorithm": "sha256(file_uuid|file_name|mime_type|size)",
+        "page_metadata": {
+          "page_index": 1,
+          "page_range": [1, 1],
+          "group_label": "boleta-a"
+        },
+        "receipt_discriminator": "folio-a-proveedor-uno-total-10000"
+      },
+      "parse_status": "parsed",
+      "parse_error": null,
+      "document_type": "BOLETA",
+      "description": null,
+      "ocr": {
+        "raw_content_type": "json",
+        "raw_preview": "{\"folio\":\"A\",\"monto_total\":\"$10.000\"}"
+      },
+      "fields": [],
+      "amount_candidates": [
+        {
+          "id": "file-1:monto_total",
+          "label": "monto_total",
+          "value": "$10.000",
+          "numeric_value": 10000,
+          "currency": "CLP",
+          "confidence": 0.9,
+          "source": {
+            "field": "monto_total",
+            "page": 1,
+            "file_uuid": "file-1",
+            "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+          }
+        }
+      ],
+      "proposed_amount": {
+        "value": "$10.000",
+        "numeric_value": 10000,
+        "currency": "CLP",
+        "confidence": 0.9,
+        "source": {
+          "field": "monto_total",
+          "page": 1,
+          "file_uuid": "file-1",
+          "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+        },
+        "candidate_id": "file-1:monto_total",
+        "ambiguous": false,
+        "selection_rule": "prefer_total_label_then_confidence"
+      },
+      "expense_category": {
+        "id": "10",
+        "name": "Combustible",
+        "status": "resolved",
+        "catalog": {
+          "status": "resolved",
+          "version": "roma-readonly-2026-07-20",
+          "source": "safe_read_only_roma_discovery"
+        },
+        "source": {
+          "type": "injected_snapshot_keyword",
+          "catalog_version": "roma-readonly-2026-07-20",
+          "catalog_source": "safe_read_only_roma_discovery",
+          "matched_terms": ["copec"],
+          "file_uuid": "file-1",
+          "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+        },
+        "confidence": 0.95,
+        "candidates": [
+          {
+            "id": "10",
+            "name": "Combustible",
+            "source": {
+              "type": "injected_snapshot_keyword",
+              "catalog_version": "roma-readonly-2026-07-20",
+              "catalog_source": "safe_read_only_roma_discovery",
+              "matched_terms": ["copec"],
+              "file_uuid": "file-1",
+              "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+            },
+            "confidence": 0.95
+          }
+        ],
+        "ambiguous": false
+      },
+      "extraction_confidence": 0.9
+    },
+    {
+      "receipt_id": "receipt_222222222222222222222222",
+      "source": {
+        "file_uuid": "file-1",
+        "file_name": "multi.pdf",
+        "mime_type": "application/pdf",
+        "kind": "pdf",
+        "status": "processed",
+        "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf",
+        "source_content_hash_algorithm": "sha256(source_bytes)",
+        "source_metadata_sha256": "2c7b4e7c921f19c4f3d3f93fd10a5fcbd227bfae31d44d1ca9e3c8e5a96b0b58",
+        "source_metadata_hash_algorithm": "sha256(file_uuid|file_name|mime_type|size)",
+        "page_metadata": {
+          "page_index": 2,
+          "page_range": [2, 2],
+          "group_label": "boleta-b"
+        },
+        "receipt_discriminator": "folio-b-proveedor-dos-total-20000"
+      },
+      "parse_status": "parsed",
+      "parse_error": null,
+      "document_type": "BOLETA",
+      "description": null,
+      "ocr": {
+        "raw_content_type": "json",
+        "raw_preview": "{\"folio\":\"B\",\"monto_total\":\"$20.000\"}"
+      },
+      "fields": [],
+      "amount_candidates": [
+        {
+          "id": "file-1:monto_total",
+          "label": "monto_total",
+          "value": "$20.000",
+          "numeric_value": 20000,
+          "currency": "CLP",
+          "confidence": 0.91,
+          "source": {
+            "field": "monto_total",
+            "page": 2,
+            "file_uuid": "file-1",
+            "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+          }
+        }
+      ],
+      "proposed_amount": {
+        "value": "$20.000",
+        "numeric_value": 20000,
+        "currency": "CLP",
+        "confidence": 0.91,
+        "source": {
+          "field": "monto_total",
+          "page": 2,
+          "file_uuid": "file-1",
+          "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+        },
+        "candidate_id": "file-1:monto_total",
+        "ambiguous": false,
+        "selection_rule": "prefer_total_label_then_confidence"
+      },
+      "expense_category": {
+        "id": "20",
+        "name": "Alimentacion",
+        "status": "resolved",
+        "catalog": {
+          "status": "resolved",
+          "version": "roma-readonly-2026-07-20",
+          "source": "safe_read_only_roma_discovery"
+        },
+        "source": {
+          "type": "injected_snapshot_keyword",
+          "catalog_version": "roma-readonly-2026-07-20",
+          "catalog_source": "safe_read_only_roma_discovery",
+          "matched_terms": ["almuerzo"],
+          "file_uuid": "file-1",
+          "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+        },
+        "confidence": 0.58,
+        "candidates": [
+          {
+            "id": "20",
+            "name": "Alimentacion",
+            "source": {
+              "type": "injected_snapshot_keyword",
+              "catalog_version": "roma-readonly-2026-07-20",
+              "catalog_source": "safe_read_only_roma_discovery",
+              "matched_terms": ["almuerzo"],
+              "file_uuid": "file-1",
+              "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+            },
+            "confidence": 0.58
+          },
+          {
+            "id": "30",
+            "name": "Viajes",
+            "source": {
+              "type": "injected_snapshot_keyword",
+              "catalog_version": "roma-readonly-2026-07-20",
+              "catalog_source": "safe_read_only_roma_discovery",
+              "matched_terms": ["viaje"],
+              "file_uuid": "file-1",
+              "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+            },
+            "confidence": 0.51
+          }
+        ],
+        "ambiguous": true
+      },
+      "extraction_confidence": 0.88
+    }
+  ]
+}
