@@ -149,6 +149,43 @@ def run_backend(monkeypatch, files, mode="disabled", adapter=None, extra=None, c
     return summary, output, backend.roma_adapter
 
 
+def test_publish_suite_fixtures_live_under_tests_with_no_write_contract():
+    root = Path(__file__).resolve().parents[1]
+    suite_files = [
+        "test_provided_params.json",
+        "test_operator_params.json",
+        "test_file_handling.json",
+        "test_widget_data.json",
+    ]
+    expected_files = [
+        "test_files/analyzer_ready_receipts_output.json",
+        "test_files/analyzer_confirmation_artifact.json",
+    ]
+
+    for filename in suite_files:
+        root_fixture = root / filename
+        suite_fixture = root / "tests" / filename
+
+        assert not root_fixture.exists()
+        assert suite_fixture.exists()
+
+        payload = json.loads(suite_fixture.read_text())
+        assert payload["files"] == expected_files
+        assert payload["args"]["batch_hash"] == "batch-hash-v1"
+        assert payload["args"]["batch_version"] == "1"
+        assert "ready_receipts_uuid" not in payload["args"]
+        assert "confirmation_artifact_uuid" not in payload["args"]
+        assert "confirmation_uuid" not in payload["args"]
+
+        extra = payload["extra_params"]
+        assert extra["source"] == "test_cli"
+        assert extra["is_test"] is True
+        assert extra["is_node_test"] is True
+        assert extra["test_execution_uuid"]
+        assert extra["explicit_lambda_override"] == "RegistrarBoletasRomaFn"
+        assert "live" not in (payload.get("prompt") or "").lower()
+
+
 def test_rejects_when_confirmation_missing(monkeypatch):
     missing_confirmation_args = args()
     missing_confirmation_args.pop("confirmation_artifact_uuid")
