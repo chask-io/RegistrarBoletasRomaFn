@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from pathlib import Path
 
 import pytest
 import requests
@@ -96,7 +97,7 @@ def args():
 
 def run_backend(monkeypatch, files, mode="disabled", adapter=None, extra=None, call_args=None):
     monkeypatch.setenv("POMPEYO_ROMA_WRITE_MODE", mode)
-    monkeypatch.setenv("POMPEYO_ROMA_BASE_URL", "https://apps2.pompeyo.cl")
+    monkeypatch.setenv("POMPEYO_ROMA_BASE_URL", "https://apps1.pompeyo.cl")
     store = MemoryFileStore(files)
     backend = logic.FunctionBackend(
         Event(call_args or args(), extra=extra),
@@ -120,6 +121,18 @@ def test_rejects_when_confirmation_missing(monkeypatch):
     assert summary["rejected_business_count"] == 1
     assert output["results"][0]["error_code"] == "CONFIRMATION_MISSING"
     assert adapter.calls == []
+
+
+def test_default_roma_base_url_is_apps1_without_path_query_or_token():
+    manifest = (Path(__file__).resolve().parents[1] / "manifest.yml").read_text()
+    base_url_line = next(line.strip() for line in manifest.splitlines() if "POMPEYO_ROMA_BASE_URL" in line)
+
+    assert 'POMPEYO_ROMA_BASE_URL: "https://apps1.pompeyo.cl"' in manifest
+    assert "apps2.pompeyo.cl" not in manifest
+    assert base_url_line == 'POMPEYO_ROMA_BASE_URL: "https://apps1.pompeyo.cl"'
+    assert "/" not in base_url_line.removeprefix('POMPEYO_ROMA_BASE_URL: "https://apps1.pompeyo.cl')
+    assert "?" not in base_url_line
+    assert "token" not in base_url_line.lower()
 
 
 def test_rejects_stale_batch_hash(monkeypatch):

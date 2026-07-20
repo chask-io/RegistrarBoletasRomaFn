@@ -11,7 +11,7 @@ function:
   memory_size: 512
 
   environment:
-    POMPEYO_ROMA_BASE_URL: "https://apps2.pompeyo.cl"
+    POMPEYO_ROMA_BASE_URL: "https://apps1.pompeyo.cl"
     POMPEYO_ROMA_WRITE_MODE: "disabled"
 
   layers:
