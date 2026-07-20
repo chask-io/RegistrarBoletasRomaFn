@@ -47,6 +47,10 @@ HTTP_TIMEOUT_SECONDS = (3.05, 20)
 MAX_RETRIES = 1
 CATEGORY_RE = re.compile(r"^[A-Z0-9][A-Z0-9_.:-]{1,63}$")
 UNRESOLVED_ENDPOINT_CODE = "ROMA_ENDPOINT_UNRESOLVED"
+SUITE_SOURCE_VALUES = {"test_cli", "orchestrator"}
+SUITE_READY_BASENAME = "analyzer_ready_receipts_output.json"
+SUITE_CONFIRMATION_BASENAME = "analyzer_confirmation_artifact.json"
+SUITE_EXPECTED_BASENAMES = {SUITE_READY_BASENAME, SUITE_CONFIRMATION_BASENAME}
 
 
 class FileStore(Protocol):
@@ -406,7 +410,7 @@ class FunctionBackend:
         )
 
     def process_request(self) -> str:
-        tool_args = self._with_test_defaults(self._extract_tool_args())
+        tool_args = self._resolve_uploaded_suite_file_args(self._extract_tool_args())
         mode = self._resolve_mode()
         is_test = self._is_test_execution()
 
@@ -696,20 +700,83 @@ class FunctionBackend:
             or extra_params.get("dry_run")
         )
 
-    def _with_test_defaults(self, tool_args: Dict[str, Any]) -> Dict[str, Any]:
-        extra_params = self.orchestration_event.extra_params or {}
-        if not extra_params.get("is_operator_params_test"):
+    def _resolve_uploaded_suite_file_args(self, tool_args: Dict[str, Any]) -> Dict[str, Any]:
+        if tool_args.get("ready_receipts_uuid") and (
+            tool_args.get("confirmation_artifact_uuid") or tool_args.get("confirmation_uuid")
+        ):
             return tool_args
-        defaults = {
-            "node_id": "265926",
-            "ready_receipts_uuid": "test-ready-receipts",
-            "confirmation_artifact_uuid": "test-confirmation",
-            "batch_hash": "batch-hash-v1",
-            "batch_version": "1",
-        }
-        merged = dict(defaults)
-        merged.update({key: val for key, val in tool_args.items() if val not in (None, "")})
-        return merged
+
+        needs_suite_resolution = not tool_args.get("ready_receipts_uuid") or not (
+            tool_args.get("confirmation_artifact_uuid") or tool_args.get("confirmation_uuid")
+        )
+        if not needs_suite_resolution:
+            return tool_args
+
+        extra_params = self.orchestration_event.extra_params or {}
+        if not self._is_strict_server_suite_event(tool_args, extra_params):
+            return tool_args
+
+        attachments = self._suite_attachments(extra_params)
+        basename_to_uuid: Dict[str, str] = {}
+        for attachment in attachments:
+            basename = self._attachment_basename(attachment)
+            file_uuid = str(attachment.get("file_uuid") or attachment.get("uuid") or "").strip()
+            if basename in basename_to_uuid:
+                raise ValueError(f"Duplicate uploaded suite fixture: {basename}")
+            basename_to_uuid[basename] = file_uuid
+
+        resolved = dict(tool_args)
+        resolved["ready_receipts_uuid"] = basename_to_uuid[SUITE_READY_BASENAME]
+        resolved["confirmation_artifact_uuid"] = basename_to_uuid[SUITE_CONFIRMATION_BASENAME]
+        return resolved
+
+    def _is_strict_server_suite_event(self, tool_args: Dict[str, Any], extra_params: Dict[str, Any]) -> bool:
+        source = getattr(self.orchestration_event, "source", None) or extra_params.get("source")
+        if source not in SUITE_SOURCE_VALUES:
+            return False
+        if extra_params.get("is_test") is not True:
+            return False
+        if extra_params.get("is_node_test") is not True:
+            return False
+        if not extra_params.get("test_execution_uuid"):
+            return False
+        if not extra_params.get("explicit_lambda_override"):
+            return False
+
+        file_uuids = self._suite_file_uuids(tool_args)
+        if len(file_uuids) != 2 or len(set(file_uuids)) != 2:
+            return False
+
+        attachments = self._suite_attachments(extra_params)
+        if len(attachments) != 2:
+            return False
+        attachment_uuids = [str(item.get("file_uuid") or item.get("uuid") or "").strip() for item in attachments]
+        if len(set(attachment_uuids)) != 2 or set(attachment_uuids) != set(file_uuids):
+            return False
+
+        basenames = {self._attachment_basename(item) for item in attachments}
+        return basenames == SUITE_EXPECTED_BASENAMES
+
+    def _suite_file_uuids(self, tool_args: Dict[str, Any]) -> List[str]:
+        raw = tool_args.get("file_uuids")
+        if isinstance(raw, str):
+            return [item.strip() for item in raw.split(",") if item.strip()]
+        if isinstance(raw, list):
+            return [str(item).strip() for item in raw if str(item).strip()]
+        return []
+
+    def _suite_attachments(self, extra_params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        attachments = extra_params.get("attachments")
+        if not isinstance(attachments, list):
+            return []
+        return [item for item in attachments if isinstance(item, dict)]
+
+    def _attachment_basename(self, attachment: Dict[str, Any]) -> str:
+        for key in ("file_name", "filename", "name", "source", "source_path", "path"):
+            value = attachment.get(key)
+            if value not in (None, ""):
+                return os.path.basename(str(value))
+        return ""
 
     def _build_output(
         self,
