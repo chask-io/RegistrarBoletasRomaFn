@@ -322,12 +322,63 @@ def _extract_source_digest(receipt: Dict[str, Any]) -> Any:
 
 def _extract_page_index(receipt: Dict[str, Any]) -> Any:
     source = receipt.get("source") if isinstance(receipt.get("source"), dict) else {}
-    return receipt.get("page_index", source.get("page_index"))
+    return _extract_page_metadata(receipt)["page_index"]
 
 
-def _extract_page_number(receipt: Dict[str, Any]) -> Any:
+def _extract_page_metadata(receipt: Dict[str, Any]) -> Dict[str, Any]:
     source = receipt.get("source") if isinstance(receipt.get("source"), dict) else {}
-    return receipt.get("page_number", source.get("page_number"))
+    nested = source.get("page_metadata") if isinstance(source.get("page_metadata"), dict) else {}
+    page_index = _normalize_optional_int(
+        nested.get("page_index")
+        if nested.get("page_index") is not None
+        else receipt.get("page_index", source.get("page_index"))
+    )
+    page_range = _normalize_page_range(
+        nested.get("page_range")
+        if nested.get("page_range") is not None
+        else receipt.get("page_range", source.get("page_range"))
+    )
+    if page_range is None:
+        legacy_page_number = _normalize_optional_int(receipt.get("page_number", source.get("page_number")))
+        if legacy_page_number is not None:
+            page_range = [legacy_page_number, legacy_page_number]
+    if page_range is None and page_index is not None:
+        page_range = [page_index, page_index]
+    group_label = nested.get("group_label") or receipt.get("group_label") or source.get("group_label")
+    return {
+        "page_index": page_index,
+        "page_range": page_range,
+        "group_label": str(group_label).strip() if group_label not in (None, "") else None,
+    }
+
+
+def _normalize_optional_int(value: Any) -> Optional[int]:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_page_range(value: Any) -> Optional[List[int]]:
+    if isinstance(value, list) and value:
+        pages = []
+        for item in value[:2]:
+            page = _normalize_optional_int(item)
+            if page is not None:
+                pages.append(page)
+        if len(pages) == 1:
+            return [pages[0], pages[0]]
+        if len(pages) >= 2:
+            return [min(pages[0], pages[1]), max(pages[0], pages[1])]
+    if isinstance(value, str):
+        pages = [int(match) for match in re.findall(r"\d+", value)]
+        if len(pages) == 1:
+            return [pages[0], pages[0]]
+        if len(pages) >= 2:
+            return [min(pages[0], pages[1]), max(pages[0], pages[1])]
+    return None
 
 
 def _normalize_category_token_value(value: Any) -> str:
@@ -599,12 +650,14 @@ class FunctionBackend:
         digest = _extract_source_digest(receipt)
         if not digest:
             raise ValueError("Receipt must include immutable file digest for idempotency")
+        page_metadata = _extract_page_metadata(receipt)
         basis = {
             "schema": "registrar_boletas_roma.idempotency.v1",
             "receipt_id": str(receipt.get("receipt_id") or ""),
             "file_digest": str(digest).lower(),
-            "page_index": _extract_page_index(receipt),
-            "page_number": _extract_page_number(receipt),
+            "page_index": page_metadata["page_index"],
+            "page_range": page_metadata["page_range"],
+            "group_label": page_metadata["group_label"],
             "amount": amount,
             "category_id": category["id"],
             "category_name": category["name"],

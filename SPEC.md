@@ -34,35 +34,44 @@ The corrected analyzer contract may instead provide:
 
 ```json
 {
-  "receipt_id": "receipt-001",
-  "source": {
-    "file_uuid": "file-receipt-001",
-    "source_content_sha256": "sha256:...",
-    "page_index": 0,
-    "page_number": 1
-  },
-  "proposed_amount": {
-    "numeric_value": 45000,
-    "currency": "CLP"
-  },
-  "expense_category": {
-    "id": "roma-cat-101",
-    "name": "Combustible",
-    "status": "resolved",
-    "ambiguous": true,
-    "candidates": [
-      {"id": "roma-cat-101", "name": "Combustible"},
-      {"id": "roma-cat-303", "name": "Viajes"}
-    ]
-  }
+  "schema_version": "pompeyo.receipt_batch.v1",
+  "receipts": [
+    {
+      "receipt_id": "receipt_...",
+      "source": {
+        "file_uuid": "file-1",
+        "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf",
+        "page_metadata": {
+          "page_index": 1,
+          "page_range": [1, 1],
+          "group_label": "boleta-a"
+        }
+      },
+      "proposed_amount": {
+        "numeric_value": 45000,
+        "currency": "CLP"
+      },
+      "expense_category": {
+        "id": "10",
+        "name": "Combustible",
+        "status": "resolved",
+        "ambiguous": true,
+        "candidates": [
+          {"id": "10", "name": "Combustible"},
+          {"id": "30", "name": "Viajes"}
+        ]
+      }
+    }
+  ]
 }
 ```
 
 `proposed_amount.numeric_value`, `expense_category.id/name`, and
-`source.source_content_sha256` are first-class inputs. Nested category objects
-must never be stringified. If the analyzer category is ambiguous, the writer
-accepts it only when the persisted confirmation pins one of the analyzer
-catalog candidates.
+plain-hex `source.source_content_sha256` are first-class inputs. Receipt-local
+page identity is `source.page_metadata.page_index/page_range/group_label`; flat
+page fields are legacy fallbacks only. Nested category objects must never be
+stringified. If the analyzer category is ambiguous, the writer accepts it only
+when the persisted confirmation pins one of the analyzer catalog candidates.
 
 The confirmation artifact must include:
 
@@ -104,8 +113,9 @@ force no-write behavior regardless of mode.
 The idempotency key is SHA-256 over:
 
 - immutable file digest,
-- `page_index`,
-- `page_number`,
+- normalized `source.page_metadata.page_index`,
+- normalized `source.page_metadata.page_range`,
+- `source.page_metadata.group_label`,
 - normalized amount,
 - confirmed category ID and name,
 - date,

@@ -483,6 +483,21 @@ def test_analyzer_output_fixture_validates_and_uses_source_digest_for_idempotenc
     fixture_dir = Path(__file__).resolve().parents[1] / "test_files"
     ready_payload = json.loads((fixture_dir / "analyzer_ready_receipts_output.json").read_text())
     confirmation_payload = json.loads((fixture_dir / "analyzer_confirmation_artifact.json").read_text())
+    receipts = ready_payload["receipts"]
+
+    assert ready_payload["schema_version"] == "pompeyo.receipt_batch.v1"
+    assert receipts[0]["source"]["source_content_sha256"] == receipts[1]["source"]["source_content_sha256"]
+    assert receipts[0]["source"]["source_content_sha256"].startswith("sha256:") is False
+    assert receipts[0]["source"]["page_metadata"] == {
+        "page_index": 1,
+        "page_range": [1, 1],
+        "group_label": "boleta-a",
+    }
+    assert receipts[1]["source"]["page_metadata"] == {
+        "page_index": 2,
+        "page_range": [2, 2],
+        "group_label": "boleta-b",
+    }
 
     summary, output, adapter = run_backend(
         monkeypatch,
@@ -492,13 +507,74 @@ def test_analyzer_output_fixture_validates_and_uses_source_digest_for_idempotenc
 
     assert summary["accepted_count"] == 2
     first, second = output["results"]
-    assert first["payload_echo_min"]["amount"] == "45000"
-    assert first["payload_echo_min"]["category_id"] == "ROMA-CAT-101"
+    assert first["payload_echo_min"]["amount"] == "10000"
+    assert first["payload_echo_min"]["category_id"] == "10"
     assert first["category_audit"]["analyzer_category_ambiguous"] is False
-    assert second["payload_echo_min"]["amount"] == "12990"
-    assert second["payload_echo_min"]["category_id"] == "ROMA-CAT-202"
+    assert second["payload_echo_min"]["amount"] == "20000"
+    assert second["payload_echo_min"]["category_id"] == "20"
     assert second["category_audit"]["analyzer_category_ambiguous"] is True
     assert first["idempotency_key"] != second["idempotency_key"]
+    assert adapter.calls == []
+
+
+def test_same_file_receipts_with_distinct_page_groups_have_distinct_idempotency_keys(monkeypatch):
+    digest = "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf"
+    base_receipt = {
+        "source": {
+            "file_uuid": "file-1",
+            "source_content_sha256": digest,
+            "page_metadata": {"page_index": 1, "page_range": [1, 1], "group_label": "boleta-a"},
+        },
+        "proposed_amount": {"numeric_value": 10000},
+        "expense_category": {
+            "id": "10",
+            "name": "Combustible",
+            "status": "resolved",
+            "ambiguous": False,
+            "candidates": [{"id": "10", "name": "Combustible"}],
+        },
+    }
+    second_receipt = {
+        **base_receipt,
+        "source": {
+            **base_receipt["source"],
+            "page_metadata": {"page_index": 2, "page_range": [2, 2], "group_label": "boleta-b"},
+        },
+    }
+    ready_payload = {
+        "schema_version": "pompeyo.receipt_batch.v1",
+        "receipts": [
+            {"receipt_id": "receipt-a", **base_receipt},
+            {"receipt_id": "receipt-b", **second_receipt},
+        ],
+    }
+    confirmation_payload = {
+        **confirmation(),
+        "allowed_categories": ["10"],
+        "confirmed_receipts": [
+            {
+                "receipt_id": "receipt-a",
+                "confirmed_amount": 10000,
+                "confirmed_category": "Combustible",
+                "confirmed_category_id": "10",
+            },
+            {
+                "receipt_id": "receipt-b",
+                "confirmed_amount": 10000,
+                "confirmed_category": "Combustible",
+                "confirmed_category_id": "10",
+            },
+        ],
+    }
+
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        {"ready": ready_payload, "confirmation": confirmation_payload},
+        mode="shadow",
+    )
+
+    assert summary["accepted_count"] == 2
+    assert output["results"][0]["idempotency_key"] != output["results"][1]["idempotency_key"]
     assert adapter.calls == []
 
 

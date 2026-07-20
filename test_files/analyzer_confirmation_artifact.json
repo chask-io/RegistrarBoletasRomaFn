@@ -4,57 +4,60 @@
   "ready_receipts_uuid": "ready-receipts-fixture",
   "batch_hash": "batch-hash-v1",
   "batch_version": "1",
-  "allowed_categories": ["roma-cat-101", "roma-cat-202", "roma-cat-303"],
+  "allowed_categories": ["10", "20", "30"],
   "confirmed_receipts": [
     {
-      "receipt_id": "receipt-001",
-      "file_uuid": "file-receipt-001",
-      "original_filename": "bencina.jpg",
-      "page_index": 0,
-      "page_number": 1,
-      "source_digest": "sha256:111111",
+      "receipt_id": "receipt_111111111111111111111111",
+      "file_uuid": "file-1",
+      "original_filename": "multi.pdf",
+      "source_digest": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf",
       "source": {
-        "digest": "sha256:111111",
-        "page_index": 0,
-        "page_number": 1,
-        "mime_type": "image/jpeg",
-        "original_filename": "bencina.jpg"
+        "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf",
+        "page_metadata": {
+          "page_index": 1,
+          "page_range": [1, 1],
+          "group_label": "boleta-a"
+        }
       },
-      "confirmed_amount": 45000,
+      "confirmed_amount": 10000,
       "confirmed_category": "Combustible",
-      "confirmed_category_id": "roma-cat-101",
+      "confirmed_category_id": "10",
       "category_name": "Combustible",
-      "category_confidence": 0.97,
+      "category_confidence": 0.95,
       "category_ambiguous": false,
-      "category_candidates": []
+      "category_candidates": [
+        {
+          "id": "10",
+          "name": "Combustible"
+        }
+      ]
     },
     {
-      "receipt_id": "receipt-002",
-      "file_uuid": "file-receipt-002",
-      "original_filename": "almuerzo.pdf",
-      "page_index": 2,
-      "page_number": 3,
-      "source_digest": "sha256:222222",
+      "receipt_id": "receipt_222222222222222222222222",
+      "file_uuid": "file-1",
+      "original_filename": "multi.pdf",
+      "source_digest": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf",
       "source": {
-        "digest": "sha256:222222",
-        "page_index": 2,
-        "page_number": 3,
-        "mime_type": "application/pdf",
-        "original_filename": "almuerzo.pdf"
+        "source_content_sha256": "93cf429feecaa19f840316a9b4906d476a7f4eb069002ead021d334f8b7537bf",
+        "page_metadata": {
+          "page_index": 2,
+          "page_range": [2, 2],
+          "group_label": "boleta-b"
+        }
       },
-      "confirmed_amount": 12990,
+      "confirmed_amount": 20000,
       "confirmed_category": "Alimentacion",
-      "confirmed_category_id": "roma-cat-202",
+      "confirmed_category_id": "20",
       "category_name": "Alimentacion",
       "category_confidence": 0.58,
       "category_ambiguous": true,
       "category_candidates": [
         {
-          "id": "roma-cat-202",
+          "id": "20",
           "name": "Alimentacion"
         },
         {
-          "id": "roma-cat-303",
+          "id": "30",
           "name": "Viajes"
         }
       ]
