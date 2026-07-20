@@ -26,7 +26,7 @@ function:
       - name: ready_receipts_uuid
         type: string
         description: UUID del JSON persistido con boletas listas para registrar.
-      - name: confirmation_uuid
+      - name: confirmation_artifact_uuid
         type: string
         description: UUID del artefacto persistido de confirmacion humana.
       - name: batch_hash

@@ -89,7 +89,7 @@ def args():
     return {
         "node_id": "265926",
         "ready_receipts_uuid": "ready",
-        "confirmation_uuid": "confirmation",
+        "confirmation_artifact_uuid": "confirmation",
         "batch_hash": "batch-hash-v1",
         "batch_version": "1",
     }
@@ -111,7 +111,7 @@ def run_backend(monkeypatch, files, mode="disabled", adapter=None, extra=None, c
 
 def test_rejects_when_confirmation_missing(monkeypatch):
     missing_confirmation_args = args()
-    missing_confirmation_args.pop("confirmation_uuid")
+    missing_confirmation_args.pop("confirmation_artifact_uuid")
     summary, output, adapter = run_backend(
         monkeypatch,
         {"ready": {"ready_receipts": [ready()]}},
@@ -120,6 +120,43 @@ def test_rejects_when_confirmation_missing(monkeypatch):
 
     assert summary["rejected_business_count"] == 1
     assert output["results"][0]["error_code"] == "CONFIRMATION_MISSING"
+    assert adapter.calls == []
+
+
+def test_accepts_legacy_confirmation_uuid_alias(monkeypatch):
+    legacy_args = args()
+    legacy_args["confirmation_uuid"] = legacy_args.pop("confirmation_artifact_uuid")
+
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        {
+            "ready": {"ready_receipts": [ready()]},
+            "confirmation": confirmation(),
+        },
+        call_args=legacy_args,
+    )
+
+    assert summary["accepted_count"] == 1
+    assert output["results"][0]["no_write_reason"] == "disabled_no_write"
+    assert adapter.calls == []
+
+
+def test_confirmation_artifact_contract_fixture(monkeypatch):
+    fixture_dir = Path(__file__).resolve().parents[1] / "test_files"
+    ready_payload = json.loads((fixture_dir / "ready_receipts_contract.json").read_text())
+    confirmation_payload = json.loads((fixture_dir / "confirmation_artifact_contract.json").read_text())
+
+    summary, output, adapter = run_backend(
+        monkeypatch,
+        {
+            "ready": ready_payload,
+            "confirmation": confirmation_payload,
+        },
+    )
+
+    assert summary["accepted_count"] == 1
+    assert output["results"][0]["receipt_id"] == "receipt-001"
+    assert output["results"][0]["status"] == "accepted"
     assert adapter.calls == []
 
 

@@ -252,13 +252,13 @@ class FunctionBackend:
         is_test = self._is_test_execution()
 
         ready_uuid = self._require_arg(tool_args, "ready_receipts_uuid")
-        confirmation_uuid = tool_args.get("confirmation_uuid")
+        confirmation_artifact_uuid = tool_args.get("confirmation_artifact_uuid") or tool_args.get("confirmation_uuid")
         batch_hash = self._require_arg(tool_args, "batch_hash")
         batch_version = str(self._require_arg(tool_args, "batch_version"))
 
         ready_payload = self.file_store.read_json(str(ready_uuid))
         ready_receipts = self._extract_receipts(ready_payload)
-        confirmation = self.file_store.read_json(str(confirmation_uuid)) if confirmation_uuid else None
+        confirmation = self.file_store.read_json(str(confirmation_artifact_uuid)) if confirmation_artifact_uuid else None
 
         logger.info(
             json.dumps(
@@ -266,7 +266,7 @@ class FunctionBackend:
                     "event": "roma_receipt_writer_start",
                     "mode": "test" if is_test else mode,
                     "ready_receipts_uuid": ready_uuid,
-                    "confirmation_uuid_present": bool(confirmation_uuid),
+                    "confirmation_artifact_uuid_present": bool(confirmation_artifact_uuid),
                     "batch_hash": self._short_hash(batch_hash),
                     "batch_version": batch_version,
                     "receipt_count": len(ready_receipts),
@@ -527,7 +527,7 @@ class FunctionBackend:
         defaults = {
             "node_id": "265926",
             "ready_receipts_uuid": "test-ready-receipts",
-            "confirmation_uuid": "test-confirmation",
+            "confirmation_artifact_uuid": "test-confirmation",
             "batch_hash": "batch-hash-v1",
             "batch_version": "1",
         }

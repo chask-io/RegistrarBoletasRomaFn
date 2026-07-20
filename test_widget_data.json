@@ -4,7 +4,7 @@
   "args": {
     "node_id": "265926",
     "ready_receipts_uuid": "test-ready-receipts",
-    "confirmation_uuid": "test-confirmation",
+    "confirmation_artifact_uuid": "test-confirmation",
     "batch_hash": "batch-hash-v1",
     "batch_version": "1"
   },

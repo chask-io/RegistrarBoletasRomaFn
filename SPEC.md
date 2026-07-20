@@ -9,7 +9,7 @@ persisted confirmation artifact.
 ## Required Inputs
 
 - `ready_receipts_uuid`: session file containing `ready_receipts`/`receipts`/`items`.
-- `confirmation_uuid`: session file containing confirmed receipt decisions.
+- `confirmation_artifact_uuid`: session file containing confirmed receipt decisions.
 - `batch_hash`: exact immutable hash for the batch.
 - `batch_version`: exact contract version for the batch.
 - `node_id`: required so Chask injects widget params.

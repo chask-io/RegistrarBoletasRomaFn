@@ -3,7 +3,7 @@
   "test_type": "operator_params",
   "args": {},
   "widget_params": {},
-  "prompt": "Llama RegistrarBoletasRomaFn con node_id 265926, ready_receipts_uuid test-ready-receipts, confirmation_uuid test-confirmation, batch_hash batch-hash-v1 y batch_version 1. Debe operar en modo de test sin escribir en ROMA.",
+  "prompt": "Llama RegistrarBoletasRomaFn con node_id 265926, ready_receipts_uuid test-ready-receipts, confirmation_artifact_uuid test-confirmation, batch_hash batch-hash-v1 y batch_version 1. Debe operar en modo de test sin escribir en ROMA.",
   "files": [],
   "extra_params": {
     "is_operator_params_test": true
